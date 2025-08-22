@@ -75,7 +75,7 @@
   let pingInterval = null;
 
   function createSocket() {
-    socket = new WebSocket('//wss://cn2.androidcloudtest.com/scws/?token=287467d5dc90550e9431a7226f03024d'); //wss://cn2.androidcloudtest.com/scws ws://192.168.190.4:3000
+    socket = new WebSocket('wss://cn2.androidcloudtest.com/scws/?token=287467d5dc90550e9431a7226f03024d'); //wss://cn2.androidcloudtest.com/scws ws://192.168.190.4:3000
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
