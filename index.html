@@ -183,11 +183,9 @@
   });
 
   videoDecoder.configure({
-    codec: 'avc1.64001f',
+    codec: 'avc1.42E01E',
     codedWidth: 720,
     codedHeight: 1280,
-    optimizeForLatency: true,
-    hardwareAcceleration: "prefer-hardware",
   });
 
   // --- 音频播放 ---
@@ -411,9 +409,7 @@
       });
 
       videoDecoder.configure({
-        codec: 'avc1.64001f',
-        optimizeForLatency: true,
-        hardwareAcceleration: "prefer-hardware",
+        codec: 'avc1.42E01E',
         codedWidth: 720,
         codedHeight: 1280,
       });
