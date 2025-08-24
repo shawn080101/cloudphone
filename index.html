@@ -182,8 +182,8 @@
     videoDecoder = new VideoDecoder({ output, error });
 
     const candidates = [
-      { codec: 'avc1.4d401f', codedWidth: 720, codedHeight: 1280, optimizeForLatency: true }, // Main@L3.1
       { codec: 'avc1.42E01E', codedWidth: 720, codedHeight: 1280, optimizeForLatency: true }, // Baseline@L3.0
+      { codec: 'avc1.4d401f', codedWidth: 720, codedHeight: 1280, optimizeForLatency: true }, // Main@L3.1
     ];
 
     for (const cfg of candidates) {
