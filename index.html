@@ -1,9 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>WebCodecs H264 + PCM 播放器（iOS 16.7 修正版）</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>WebCodecs H264 + PCM 播放器（可保存）</title>
   <style>
     body { background: #000; margin: 0; overflow: hidden; }
     canvas {
@@ -12,9 +11,24 @@
       position: absolute;
       top: 0; bottom: 0; left: 0; right: 0;
     }
-    #saveButton, #uploadBtn {
+    #saveButton {
       position: fixed;
+      top: 100px;
       left: 10px;
+      z-index: 999;
+      padding: 6px 12px;
+      background: #09f;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #uploadBtn {
+      position: fixed;
+      top: 50%;
+      left: 10%;
+      transform: translate(-50%, -50%);
       z-index: 999;
       padding: 6px 12px;
       background: #09f;
@@ -25,8 +39,6 @@
       font-size: 14px;
       display: none;
     }
-    #saveButton { top: 100px; }
-    #uploadBtn { top: 150px; }
     #latencyDisplay {
       position: fixed;
       top: 10px;
@@ -42,6 +54,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
   <script>eruda.init();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 </head>
 <body>
 <canvas id="canvas"></canvas>
@@ -51,9 +64,7 @@
 <div id="latencyDisplay">⏱ 延时: -- ms</div>
 
 <script>
-  // ============================
-  // WebSocket 自动重连 + 安全发送
-  // ============================
+  // --- WebSocket 自动重连和安全发送封装 ---
   let socket = null;
   let reconnectTimer = null;
   let connect = false;
@@ -63,12 +74,21 @@
   let pingInterval = null;
 
   function createSocket() {
-    socket = new WebSocket('wss://cn2.androidcloudtest.com/scws/?token=287467d5dc90550e9431a7226f03024d');
+    socket = new WebSocket('wss://cn2.androidcloudtest.com/scws/?token=68aeab78d480b9cf8d55d9deb3e15b92'); //wss://cn2.androidcloudtest.com/scws ws://192.168.190.4:3000
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
       console.log('✅ WebSocket 已连接');
-      if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      /*console.log('resend', resend);
+      if (resend) {
+        console.log('重发图片');
+        safeSendPhoto(lastImageData);
+        resend = false;
+      }*/
       document.getElementById('latencyDisplay').textContent = `✅ 已连接 | 延时: -- ms`;
 
       if (!connect) {
@@ -77,22 +97,46 @@
         safeSend(JSON.stringify({ wm_size: `720x1280` }));
         safeSend(JSON.stringify({ dpi: `320` }));
         safeSend(JSON.stringify({ os: `ios` }));
-        safeSend(JSON.stringify({ scheme: `tcph0g://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
+        //safeSend(JSON.stringify({ switch_activity: `com.android.settings/.Settings` })); //com.s15af5x.all2/com.yyds.sportnew.StartActivity com.android.settings/.Settings
+        safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //开云 很慢 scheme功能ok
+        //safeSend(JSON.stringify({ scheme: `t06fut://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //爱游戏 scheme功能ok
+        //safeSend(JSON.stringify({ scheme: `tqnc02://com.s15af5x.fao2f4o5?data=bobCloud&name=shawn1&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //乐鱼 很慢 scheme功能ok
+        //safeSend(JSON.stringify({ scheme: `tg7ooa://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //华体会 很慢 scheme功能ok
+        //safeSend(JSON.stringify({ scheme: `tcph0g://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //米兰 很慢 scheme功能ok
+        //safeSend(JSON.stringify({ scheme: `tap6xh://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //九游 很慢 scheme功能ok
+        //safeSend(JSON.stringify({ scheme: ` od://com.od.games?data=odCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //od 闪退
+        //safeSend(JSON.stringify({ scheme: ` xk://com.xk.games?data=xkCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //星空 闪退
+        //safeSend(JSON.stringify({ scheme: `tc0hdu://com.bob.live?data=bobCloud&name=shawn1&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` })); //MK 很慢 不对
+        //safeSend(JSON.stringify({ scheme: `tqnc02://com.s15af5x.fao2f4o5?data=bobCloud&name=final006&password=7Kxg5sfoqHX4GT6CLjFK1g%3D%3D&token=` }));
         safeSend(JSON.stringify({ cp: `shawnn` }));
         safeSend(JSON.stringify({ connect: `1` }));
         safeSend(JSON.stringify({ command: `wm size` }));
       }
-      if (pingInterval) clearInterval(pingInterval);
+      if (pingInterval) {
+        clearInterval(pingInterval);
+      }
       pingInterval = setInterval(sendPing, 1000);
     };
 
     socket.onclose = () => {
+      //console.warn(`[${new Date().toLocaleString()}] 222`);
+      /*if (Date.now() - lastSendTime < 100) {
+        resend = true;
+        console.log(`[${new Date().toLocaleString()}] ❌ WebSocket 已断开，2秒后尝试重连, 100ms内，重发照片`);
+      } else {
+        console.warn(`[${new Date().toLocaleString()}] ❌ WebSocket 已断开，2秒后尝试重连`);
+      }*/
       console.warn(`[${new Date().toLocaleString()}] ❌ WebSocket 已断开，2秒后尝试重连`);
       document.getElementById('latencyDisplay').textContent = '❌ 连接断开，正在重连...';
       connect = false;
-      if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
+      if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+      }
       if (!reconnectTimer) {
-        reconnectTimer = setTimeout(() => { createSocket(); }, 2000);
+        reconnectTimer = setTimeout(() => {
+          createSocket();
+        }, 2000);
       }
     };
 
@@ -111,9 +155,7 @@
     }
   }
 
-  // ============================
-  // 画布 & 显示
-  // ============================
+  // --- Canvas 和 WebCodecs 视频解码相关 ---
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   canvas.width = 720;
@@ -123,50 +165,10 @@
   let lastFpsTime = performance.now();
   let currentFps = 0;
 
-  function resizeCanvas() {
-    const aspectRatio = 720 / 1280;
-    const windowWidth = window.innerWidth;
-    const windowHeight = window.innerHeight;
-
-    let displayWidth = windowWidth;
-    let displayHeight = windowWidth / aspectRatio;
-
-    if (displayHeight > windowHeight) {
-      displayHeight = windowHeight;
-      displayWidth = windowHeight * aspectRatio;
-    }
-
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
-  }
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-
-  // ============================
-  // WebCodecs 视频解码（iOS 16.7 兼容）
-  // 关键改动：
-  // 1) 严格自增时间戳（us），从0开始
-  // 2) output 里使用 createImageBitmap 再 drawImage
-  // 3) 去掉 hardwareAcceleration 选项
-  // 4) 首选 Main Profile，再回落到 Baseline
-  // ============================
-
-  let videoDecoder = null;
-
-  async function configureDecoder() {
-    if (videoDecoder && videoDecoder.state !== 'closed') {
-      try { videoDecoder.close(); } catch (e) {}
-    }
-
-    const output = async (frame) => {
-      try {
-        // iOS 16.x: 直接 drawImage(VideoFrame) 偶发黑屏
-        const bitmap = await createImageBitmap(frame);
-        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        bitmap.close();
-      } finally {
-        frame.close();
-      }
+  let videoDecoder = new VideoDecoder({
+    output: frame => {
+      ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+      frame.close();
       decodedFrameCount++;
       const now = performance.now();
       if (now - lastFpsTime >= 1000) {
@@ -175,125 +177,28 @@
         lastFpsTime = now;
         document.getElementById('latencyDisplay').textContent = `⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps}`;
       }
-    };
+    },
+    error: e => console.error('VideoDecoder error:', e),
+  });
 
-    const error = (e) => console.error('VideoDecoder error:', e);
+  videoDecoder.configure({
+    codec: 'avc1.42E01E',
+    codedWidth: 720,
+    codedHeight: 1280,
+    optimizeForLatency: true,
+    hardwareAcceleration: "prefer-hardware",
+  });
 
-    videoDecoder = new VideoDecoder({ output, error });
-
-    const candidates = [
-      { codec: 'avc1.42E01E', codedWidth: 720, codedHeight: 1280, optimizeForLatency: true }, // Baseline@L3.0
-      { codec: 'avc1.4d401f', codedWidth: 720, codedHeight: 1280, optimizeForLatency: true }, // Main@L3.1
-    ];
-
-    for (const cfg of candidates) {
-      try {
-        // Safari 16.7 的 isConfigSupported 可能返回乐观结果，这里直接尝试 configure，失败再回退
-        await videoDecoder.configure(cfg);
-        console.log('✅ 使用解码配置:', cfg.codec);
-        return;
-      } catch (e) {
-        console.warn('⚠️ 配置失败，尝试下一个:', cfg.codec, e);
-      }
-    }
-
-    console.error('❌ 没有可用的 H.264 解码配置');
-  }
-
-  // 严格自增的时间戳（微秒）
-  const frameQueue = [];
-  const MAX_FRAME_QUEUE = 10;
-  let decoding = false;
-  let isStart = false;
-  let lastVideoTimestamp = 0;
-  const frameDurationUs = Math.round(1000000 / 60); // 60fps 约 16667us
-  let haveSps = false, havePps = false;
-
-  function decodeNextFrame() {
-    if (decoding) return;
-    if (!videoDecoder || videoDecoder.state === 'closed') return;
-    if (frameQueue.length === 0) return;
-    if (videoDecoder.decodeQueueSize > 3) return;
-
-    const payload = frameQueue.shift();
-
-    const info = scanNal(payload);
-    if (info.hasSps) haveSps = true;
-    if (info.hasPps) havePps = true;
-    const isKey = info.hasIdr;
-
-    // 必须从 IDR 开始，且要在 IDR 前拿到 SPS/PPS
-    if (!isStart) {
-      if (!(isKey && haveSps && havePps)) {
-        // 没到可用起点，继续等
-        return;
-      }
-      isStart = true;
-      lastVideoTimestamp = 0;
-    } else {
-      lastVideoTimestamp += frameDurationUs;
-    }
-
-    const chunk = new EncodedVideoChunk({
-      type: isKey ? 'key' : 'delta',
-      timestamp: lastVideoTimestamp,
-      data: payload,
-    });
-
-    try {
-      decoding = true;
-      videoDecoder.decode(chunk);
-    } catch (err) {
-      console.error('Video decode error:', err);
-      resetDecoder();
-    } finally {
-      decoding = false;
-      Promise.resolve().then(decodeNextFrame);
-    }
-  }
-
-  function resetDecoder() {
-    try { if (videoDecoder && videoDecoder.state !== 'closed') videoDecoder.close(); } catch (e) { console.warn('关闭 decoder 失败:', e); }
-    videoDecoder = null;
-    isStart = false;
-    haveSps = havePps = false;
-    configureDecoder().then(() => {
-      console.log('✅ Decoder 重建成功，等待关键帧+SPS/PPS');
-    }).catch(e => console.error('❌ Decoder 恢复失败:', e));
-  }
-
-  // 扫描 Annex-B NAL：支持 00 00 00 01 和 00 00 01 起始码
-  function scanNal(payload) {
-    let hasIdr = false, hasSps_ = false, hasPps_ = false;
-    for (let i = 0; i < payload.length - 4; i++) {
-      // 00 00 01
-      if (payload[i] === 0x00 && payload[i+1] === 0x00 && payload[i+2] === 0x01) {
-        const nalType = payload[i+3] & 0x1F;
-        if (nalType === 5) hasIdr = true;      // IDR
-        if (nalType === 7) hasSps_ = true;     // SPS
-        if (nalType === 8) hasPps_ = true;     // PPS
-      }
-      // 00 00 00 01
-      if (payload[i] === 0x00 && payload[i+1] === 0x00 && payload[i+2] === 0x00 && payload[i+3] === 0x01) {
-        const nalType = payload[i+4] & 0x1F;
-        if (nalType === 5) hasIdr = true;
-        if (nalType === 7) hasSps_ = true;
-        if (nalType === 8) hasPps_ = true;
-      }
-    }
-    return { hasIdr, hasSps: hasSps_, hasPps: hasPps_ };
-  }
-
-  // ============================
-  // 音频（PCM 16bit LE, 8kHz, mono）
-  // ============================
+  // --- 音频播放 ---
   let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const sampleRate = 8000;
   const channelCount = 1;
   let nextAudioTime = 0;
 
   function playPCM(data) {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
 
     const int16Data = new Int16Array(data.buffer || data);
     const frameCount = int16Data.length / channelCount;
@@ -314,17 +219,41 @@
     const now = audioCtx.currentTime;
     const MAX_DELAY = 0.05;
 
-    if (nextAudioTime === 0 || nextAudioTime < now) nextAudioTime = now;
-    if (nextAudioTime - now > MAX_DELAY) nextAudioTime = now;
+    if (nextAudioTime === 0 || nextAudioTime < now) {
+      nextAudioTime = now;
+    }
+    if (nextAudioTime - now > MAX_DELAY) {
+      nextAudioTime = now;
+    }
 
     source.start(nextAudioTime);
     nextAudioTime += audioBuffer.duration;
-    source.onended = () => { source.disconnect(); };
+    source.onended = () => {
+      source.disconnect();
+    };
   }
 
-  // ============================
-  // 触摸/鼠标事件透传
-  // ============================
+  // --- 画布缩放适配 ---
+  function resizeCanvas() {
+    const aspectRatio = 720 / 1280;
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    let displayWidth = windowWidth;
+    let displayHeight = windowWidth / aspectRatio;
+
+    if (displayHeight > windowHeight) {
+      displayHeight = windowHeight;
+      displayWidth = windowHeight * aspectRatio;
+    }
+
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+  }
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+
+  // --- 触摸和鼠标事件 ---
   let isDown = false;
   let throttleTimer = null;
   let showPhoto = false;
@@ -337,10 +266,17 @@
     return { x, y };
   }
 
-  function sendDown(x, y) { safeSend(JSON.stringify({ start: `${x},${y}` })); }
-  function sendMove(x, y) { safeSend(JSON.stringify({ swipe: `${x},${y}` })); }
+  function sendDown(x, y) {
+    safeSend(JSON.stringify({ start: `${x},${y}` }));
+  }
+
+  function sendMove(x, y) {
+    safeSend(JSON.stringify({ swipe: `${x},${y}` }));
+  }
+
   function sendUp(x, y) {
     safeSend(JSON.stringify({ end: `${x},${y}` }));
+
     if (photoRegion) {
       const { left, top, right, bottom } = photoRegion;
       const inside = x >= left && x <= right && y >= top && y <= bottom;
@@ -357,14 +293,14 @@
 
   canvas.addEventListener('mousedown', e => {
     isDown = true;
-    throttleTimer = setTimeout(() => { throttleTimer = null; }, 16);
+    throttleTimer = setTimeout(() => { throttleTimer = null; }, 30);
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     sendDown(x, y);
   });
 
   canvas.addEventListener('mousemove', e => {
     if (!isDown || throttleTimer) return;
-    throttleTimer = setTimeout(() => { throttleTimer = null; }, 16);
+    throttleTimer = setTimeout(() => { throttleTimer = null; }, 30);
     e.preventDefault();
     const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     sendMove(x, y);
@@ -382,7 +318,7 @@
     e.preventDefault();
     if (e.touches.length === 0) return;
     isDown = true;
-    throttleTimer = setTimeout(() => { throttleTimer = null; }, 16);
+    throttleTimer = setTimeout(() => { throttleTimer = null; }, 30);
     const touch = e.touches[0];
     const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
     sendDown(x, y);
@@ -391,7 +327,7 @@
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     if (!isDown || throttleTimer) return;
-    throttleTimer = setTimeout(() => { throttleTimer = null; }, 16);
+    throttleTimer = setTimeout(() => { throttleTimer = null; }, 30);
     const touch = e.touches[0];
     const { x, y } = getCanvasCoords(touch.clientX, touch.clientY);
     sendMove(x, y);
@@ -408,11 +344,127 @@
     sendUp(x, y);
   }, { passive: false });
 
-  // ============================
-  // WebSocket 消息处理
-  // ============================
+  // --- 音视频缓存和解码 ---
+  const frameQueue = [];
+  const MAX_FRAME_QUEUE = 10;
+  let decoding = false;
+  let isStart = false;
+  let lastVideoTimestamp = 0;
+  const frameDurationUs = 1000000 / 60;
+
+  function decodeNextFrame() {
+  if (decoding || frameQueue.length === 0 || videoDecoder.decodeQueueSize > 3) return;
+
+  const payloadWithPTS = frameQueue.shift();
+
+  // 提取 PTS 和 NALU
+  const ptsView = new DataView(payloadWithPTS.buffer, payloadWithPTS.byteOffset, 8);
+  const ptsUs = ptsView.getBigUint64(0); // BigInt，单位 us
+  const nalu = payloadWithPTS.slice(8);
+
+  const isKey = isIDR(nalu);
+
+  if (!isKey && !isStart) return;
+
+  decoding = true;
+
+  try {
+    if (isKey) {
+      isStart = true;
+      lastVideoPTS = Number(ptsUs) / 1000; // 转成 ms
+      startTime = performance.now();       // 播放开始时间
+    }
+
+    // 根据 PTS 计算渲染时间
+    const targetTime = startTime + (Number(ptsUs) / 1000 - lastVideoPTS);
+
+    const delay = targetTime - performance.now();
+    const chunk = new EncodedVideoChunk({
+      type: isKey ? 'key' : 'delta',
+      timestamp: Number(ptsUs), // 可以保持原始 pts，单位 us
+      data: nalu
+    });
+
+    if (delay > 0) {
+      // 延迟解码，尽量跟 PTS 对齐
+      setTimeout(() => {
+        videoDecoder.decode(chunk);
+        decoding = false;
+        setTimeout(decodeNextFrame, 0);
+      }, delay);
+    } else {
+      videoDecoder.decode(chunk);
+      decoding = false;
+      setTimeout(decodeNextFrame, 0);
+    }
+  } catch (err) {
+    console.error('Video decode error:', err);
+    resetDecoder();
+    decoding = false;
+    setTimeout(decodeNextFrame, 0);
+  }
+}
+
+  function resetDecoder() {
+    try {
+      if (videoDecoder.state !== 'closed') videoDecoder.close();
+    } catch (e) {
+      console.warn('关闭 decoder 失败:', e);
+    }
+
+    try {
+      videoDecoder = new VideoDecoder({
+        output: frame => {
+          ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+          frame.close();
+          decodedFrameCount++;
+          const now = performance.now();
+          if (now - lastFpsTime >= 1000) {
+            currentFps = decodedFrameCount;
+            decodedFrameCount = 0;
+            lastFpsTime = now;
+            document.getElementById('latencyDisplay').textContent = `⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps}`;
+          }
+        },
+        error: e => console.error('VideoDecoder error:', e),
+      });
+
+      videoDecoder.configure({
+        codec: 'avc1.42E01E',
+        optimizeForLatency: true,
+        hardwareAcceleration: "prefer-hardware",
+        codedWidth: 720,
+        codedHeight: 1280,
+      });
+
+      isStart = false;
+      console.log('✅ Decoder 重建成功，等待关键帧');
+    } catch (e) {
+      console.error('❌ Decoder恢复失败:', e);
+    }
+  }
+
+  function isIDR(payload) {
+    for (let i = 0; i < payload.length - 4; i++) {
+      if (
+        payload[i] === 0x00 &&
+        payload[i+1] === 0x00 &&
+        payload[i+2] === 0x00 &&
+        payload[i+3] === 0x01
+      ) {
+        const nalType = payload[i+4] & 0x1F;
+        if (nalType === 5) { // IDR帧
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // --- WebSocket 消息处理 ---
   function onMessageHandler(event) {
     const data = event.data;
+    //console.log("收到消息:", event.data);
     if (typeof data === 'string') {
       try {
         const msg = JSON.parse(data);
@@ -432,8 +484,16 @@
     const payload = buffer.slice(1);
 
     if (type === 0x01) { // 视频
+      // 提取前8字节 PTS
+      const ptsView = new DataView(payload.buffer, payload.byteOffset, 8);
+      let pts = ptsView.getBigUint64(0); // BigInt 类型，单位 us
+      //console.log("PTS (BigInt):", pts);
+      //console.log("PTS (Number, ms):", Number(pts) / 1000);
+      // 剩下的数据是 H264 NALU
+      const nalu = payload.slice(8);
+
       if (frameQueue.length >= MAX_FRAME_QUEUE) {
-        const index = frameQueue.findIndex(buf => !scanNal(buf).hasIdr);
+        const index = frameQueue.findIndex(buf => !isIDR(buf));
         if (index !== -1) {
           frameQueue.splice(index, 1);
         } else {
@@ -444,10 +504,21 @@
       frameQueue.push(payload);
       decodeNextFrame();
     } else if (type === 0x02) { // 音频
-      try { playPCM(payload); } catch (err) { console.error('PCM 播放出错:', err); }
+      try {
+        playPCM(payload);
+      } catch (err) {
+        console.error('PCM 播放出错:', err);
+      }
     } else if (type === 0x03) { // 键盘
       const show = payload[0];
       console.log("键盘指令 show =", show);
+      if (os === "android") {
+        if (show === 1) {
+          //document.getElementById('fakeInput').focus();
+        } else {
+          //document.getElementById('fakeInput').blur();
+        }
+      }
     } else if (type === 0x04) { // 照片区域
       if (payload.length >= 8) {
         const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
@@ -463,13 +534,15 @@
         console.warn('⚠️ 收到0x04数据长度不足');
       }
     } else if (type === 0x05) { // ready
-      console.log("ready", payload[0]);
+      console.log("ready")
+      if (payload[0] === 1) {
+        console.log("payload[0]:", payload[0])
+      }
+      
     }
   }
 
-  // ============================
-  // Ping for latency
-  // ============================
+  // --- 发送 ping 测延时 ---
   function sendPing() {
     if (socket && socket.readyState === WebSocket.OPEN) {
       pingStartTime = performance.now();
@@ -477,14 +550,17 @@
     }
   }
 
-  // ============================
-  // 选择照片上传（分片）
-  // ============================
+  // --- 选择照片上传相关 ---
   const fileInput = document.getElementById('fileInput');
   const saveButton = document.getElementById('saveButton');
   const uploadBtn = document.getElementById('uploadBtn');
+  let lastImageData = null; // 缓存图片数据
+  //let lastSendTime = 0;
+  //let resend = false;
 
-  uploadBtn.onclick = () => { fileInput.click(); };
+  uploadBtn.onclick = () => {
+    fileInput.click();
+  };
 
   fileInput.onchange = () => {
     const file = fileInput.files[0];
@@ -494,13 +570,17 @@
       const arrayBuffer = reader.result;
       const uint8Arr = new Uint8Array(arrayBuffer);
       console.log('📷 选中图片，大小:', uint8Arr.length);
+      //lastImageData = uint8Arr; // 缓存下来
       safeSendPhoto(uint8Arr);
     };
     reader.readAsArrayBuffer(file);
   };
 
   function downloadStreams() {
-    document.getElementById("saveButton").style.display = "none";
+    // 这里如果你有缓存视频音频数据，可以打包下载
+    //document.getElementById("saveButton").style.display = "none";
+    console.warn('downloadStreams');
+    safeSend(JSON.stringify({ bit_rate: `600000` }));
   }
 
   const CHUNK_SIZE = 64 * 1024; // 64KB
@@ -513,30 +593,28 @@
     console.warn(`[${new Date().toLocaleString()}] 📤 开始发送图片，大小: ${data.length} bytes`);
 
     const totalChunks = Math.ceil(data.length / CHUNK_SIZE);
-    const uid = Date.now();
+    const uid = Date.now(); // 每张图一个唯一 ID
 
     for (let i = 0; i < totalChunks; i++) {
       const chunk = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+
       const message = {
         type: 'photo_chunk',
-        uid,
-        index: i,
-        total: totalChunks,
-        data: Array.from(chunk),
+        uid,              // 图像唯一标识
+        index: i,         // 当前块序号
+        total: totalChunks, // 总块数
+        data: Array.from(chunk), // 转成可序列化格式
       };
+
       socket.send(JSON.stringify(message));
     }
 
+    lastSendTime = Date.now();
     console.warn(`[${new Date().toLocaleString()}] ✅ 图片拆包发送完成，共 ${totalChunks} 块`);
   }
 
-  // ============================
-  // 页面初始化
-  // ============================
-  (async function init() {
-    await configureDecoder();
-    createSocket();
-  })();
+  // --- 页面初始化 ---
+  createSocket();
 
 </script>
 </body>
