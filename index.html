@@ -132,7 +132,7 @@
         if (recvTimeMap.has(pts)) {
           const cost = endTime - recvTimeMap.get(pts);
           lastDecodeCost = cost.toFixed(2); // 保存耗时(ms)
-          console.log(`🎯 PTS=${pts} 解码耗时: ${lastDecodeCost} ms`);
+          //console.log(`🎯 PTS=${pts} 解码耗时: ${lastDecodeCost} ms`);
           recvTimeMap.delete(pts);
         }
 
