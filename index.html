@@ -51,7 +51,7 @@
   <button id="saveButton" onclick="downloadStreams()">选择照片</button>
   <button id="uploadBtn">选择照片</button>
   <input type="file" id="fileInput" accept="image/*" style="display:none" />
-  <div id="latencyDisplay">⏱ 延时: -- ms | 🎞 FPS: -- | ⌛ 解码: -- ms</div>
+  <div id="latencyDisplay">延时: -- ms | FPS: -- | 解码: -- ms</div>
 
   <script>
   // =================== WebSocket 自动重连与发送 ===================
@@ -68,7 +68,7 @@
     socket.onopen = () => {
       console.log('✅ WebSocket 已连接');
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      document.getElementById('latencyDisplay').textContent = `✅ 已连接 | ⏱ 延时: -- ms | 🎞 FPS: -- | ⌛ 解码: -- ms`;
+      document.getElementById('latencyDisplay').textContent = `✅ 已连接 | 延时: -- ms | FPS: -- | 解码: -- ms`;
 
       if (!connect) {
         connect = true;
@@ -324,7 +324,7 @@
         if (msg.cmd==='pong') { 
           latency = Math.round(performance.now()-pingStartTime); 
           document.getElementById('latencyDisplay').textContent=
-            `⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps} | ⌛ 解码: ${lastDecodeCost} ms`;
+            `延时: ${latency} ms | FPS: ${currentFps} | 解码: ${lastDecodeCost} ms`;
         }
       } catch(e){ console.warn('JSON 解析失败:', e); }
       return;
@@ -430,7 +430,7 @@
     currentFps = Math.round(decodedFrames / ((now - lastFpsTime) / 1000)); // FPS 整数显示
     lastFpsTime = now;
     document.getElementById('latencyDisplay').textContent =
-      `⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps} | ⌛ 解码: ${lastDecodeCost} ms`;
+      `延时: ${latency} ms | FPS: ${currentFps} | 解码: ${lastDecodeCost} ms`;
     decodedFrames = 0;
   }, 1000);
   </script>
