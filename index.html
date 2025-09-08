@@ -125,15 +125,7 @@
       output: frame => {
         ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
         frame.close();
-        decodedFrameCount++;
         decodedFrames++; // === 新增: 解码帧计数 ===
-        const now = performance.now();
-        if (now - lastFpsTime >= 1000) {
-          currentFps = decodedFrameCount;
-          decodedFrameCount = 0;
-          lastFpsTime = now;
-          document.getElementById('latencyDisplay').textContent = `⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps}`;
-        }
       },
       error: e => console.error('VideoDecoder error:', e)
     });
