@@ -344,14 +344,14 @@
         }else{ photoRegion=null; console.warn('⚠️ 收到0x04数据长度不足'); }
         break;
       case 0x05: console.log("ready", payload[0]); break;
-      case 0x09:
+      /*case 0x09:
         if(payload.length>=12){
           const view=new DataView(payload.buffer,payload.byteOffset,payload.byteLength);
           const pts=view.getBigUint64(0,false);
           const fps=view.getInt32(8,false);
           console.log("收到 PTS+FPS", {pts: pts.toString(), fps});
         }else console.warn("⚠️ 收到 0x09 数据长度不足:", payload.length);
-        break;
+        break;*/
     }
   }
   
