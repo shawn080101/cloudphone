@@ -51,7 +51,7 @@
   <button id="saveButton" onclick="downloadStreams()">选择照片</button>
   <button id="uploadBtn">选择照片</button>
   <input type="file" id="fileInput" accept="image/*" style="display:none" />
-  <div id="latencyDisplay">⏱ 延时: -- ms</div>
+  <div id="latencyDisplay">⏱ 延时: -- ms | 🎞 FPS: -- | ⌛ 解码: -- ms</div>
 
   <script>
   // =================== WebSocket 自动重连与发送 ===================
@@ -68,7 +68,7 @@
     socket.onopen = () => {
       console.log('✅ WebSocket 已连接');
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      document.getElementById('latencyDisplay').textContent = `✅ 已连接 | 延时: -- ms`;
+      document.getElementById('latencyDisplay').textContent = `✅ 已连接 | ⏱ 延时: -- ms | 🎞 FPS: -- | ⌛ 解码: -- ms`;
 
       if (!connect) {
         connect = true;
@@ -120,12 +120,25 @@
   let videoDecoder = null, frameQueue = [], MAX_FRAME_QUEUE = 10, decoding = false;
   let isStart = false, lastVideoPTS = 0, startTime = 0;
 
+  // === 新增: 保存每个PTS的接收时间 ===
+  const recvTimeMap = new Map();
+  let lastDecodeCost = '--';
+
   function initDecoder() {
     videoDecoder = new VideoDecoder({
       output: frame => {
+        const pts = frame.timestamp;
+        const endTime = performance.now();
+        if (recvTimeMap.has(pts)) {
+          const cost = endTime - recvTimeMap.get(pts);
+          lastDecodeCost = cost.toFixed(2); // 保存耗时(ms)
+          console.log(`🎯 PTS=${pts} 解码耗时: ${lastDecodeCost} ms`);
+          recvTimeMap.delete(pts);
+        }
+
         ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
         frame.close();
-        decodedFrames++; // === 新增: 解码帧计数 ===
+        decodedFrames++;
       },
       error: e => console.error('VideoDecoder error:', e)
     });
@@ -155,7 +168,7 @@
     if (decoding || frameQueue.length === 0 || videoDecoder.decodeQueueSize > 3) return;
 
     const payloadWithPTS = frameQueue.shift();
-    expectedFrames++; // === 新增: 期望帧数 +1 ===
+    expectedFrames++;
     const ptsView = new DataView(payloadWithPTS.buffer, payloadWithPTS.byteOffset, 8);
     const ptsUs = ptsView.getBigUint64(0);
     const nalu = payloadWithPTS.slice(8);
@@ -180,6 +193,9 @@
         timestamp: Number(ptsUs),
         data: nalu
       });
+
+      // === 新增: 记录接收时间 ===
+      recvTimeMap.set(Number(ptsUs), performance.now());
 
       if (delay > 0) {
         setTimeout(() => {
@@ -306,8 +322,9 @@
       try {
         const msg = JSON.parse(data);
         if (msg.cmd==='pong') { 
-          latency=Math.round(performance.now()-pingStartTime); 
-          document.getElementById('latencyDisplay').textContent=`⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps}`; 
+          latency = Math.round(performance.now()-pingStartTime); 
+          document.getElementById('latencyDisplay').textContent=
+            `⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps} | ⌛ 解码: ${lastDecodeCost} ms`;
         }
       } catch(e){ console.warn('JSON 解析失败:', e); }
       return;
@@ -323,10 +340,10 @@
           const idx=frameQueue.findIndex(buf=>!isIDR(buf));
           if (idx!==-1) {
             frameQueue.splice(idx,1);
-            droppedFrames++; // === 新增: 丢帧计数 ===
+            droppedFrames++;
           } else {
             frameQueue.shift();
-            droppedFrames++; // === 新增: 丢帧计数 ===
+            droppedFrames++;
           }
           console.warn('⚠️ 丢帧以控制延迟');
         }
@@ -344,18 +361,10 @@
         }else{ photoRegion=null; console.warn('⚠️ 收到0x04数据长度不足'); }
         break;
       case 0x05: console.log("ready", payload[0]); break;
-      /*case 0x09:
-        if(payload.length>=12){
-          const view=new DataView(payload.buffer,payload.byteOffset,payload.byteLength);
-          const pts=view.getBigUint64(0,false);
-          const fps=view.getInt32(8,false);
-          console.log("收到 PTS+FPS", {pts: pts.toString(), fps});
-        }else console.warn("⚠️ 收到 0x09 数据长度不足:", payload.length);
-        break;*/
     }
   }
-  
-    // =================== 图片上传 ===================
+
+  // =================== 图片上传 ===================
   const fileInput=document.getElementById('fileInput');
   const saveButton=document.getElementById('saveButton');
   const uploadBtn=document.getElementById('uploadBtn');
@@ -409,12 +418,21 @@
       }
     }
 
-    // 每次统计后清零
     expectedFrames = decodedFrames = droppedFrames = 0;
   }, 5000);
 
   // =================== 页面初始化 ===================
   createSocket();
+
+  // === FPS 每秒更新 ===
+  setInterval(() => {
+    const now = performance.now();
+    currentFps = Math.round(decodedFrames / ((now - lastFpsTime) / 1000)); // FPS 整数显示
+    lastFpsTime = now;
+    document.getElementById('latencyDisplay').textContent =
+      `⏱ 延时: ${latency} ms | 🎞 FPS: ${currentFps} | ⌛ 解码: ${lastDecodeCost} ms`;
+    decodedFrames = 0;
+  }, 1000);
   </script>
 </body>
 </html>
