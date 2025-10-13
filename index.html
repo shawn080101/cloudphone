@@ -40,6 +40,7 @@
       font-size: 14px;
       font-family: monospace;
       border-radius: 6px;
+      display: none;
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
@@ -62,7 +63,7 @@
   let expectedFrames = 0, decodedFrames = 0, droppedFrames = 0;
 
   function createSocket() {
-    socket = new WebSocket('wss://cn2.androidcloudtest.com/scws/?token=8ff9086396a4e48980c501213991d7e0');
+    socket = new WebSocket('wss://cn2.androidcloudtest.com/?token=81a89b2d4a1715703325eb2a09e53f8a'); //wss://cn2.androidcloudtest.com ws://192.168.190.4:3000 wss://cloudphonews.com 
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
@@ -77,6 +78,7 @@
         safeSend(JSON.stringify({ dpi: `320` }));
         safeSend(JSON.stringify({ os: `ios` }));
         safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
+        safeSend(JSON.stringify({ codec: `h264` }));
         safeSend(JSON.stringify({ cp: `shawnn` }));
         safeSend(JSON.stringify({ connect: `1` }));
         safeSend(JSON.stringify({ command: `wm size` }));
@@ -125,6 +127,17 @@
   let lastDecodeCost = '--';
 
   function initDecoder() {
+    if (typeof VideoDecoder === 'undefined' || !('isConfigSupported' in VideoDecoder)) {
+      console.error('❌ 当前浏览器不支持 WebCodecs VideoDecoder');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.font = '20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('WebCodecs 不受支持', canvas.width / 2, canvas.height / 2);
+      initWebRTCTrack();
+      return;
+    }
+
     videoDecoder = new VideoDecoder({
       output: frame => {
         const pts = frame.timestamp;
@@ -151,8 +164,10 @@
     });
 
     isStart = false;
+    createSocket();
   }
-  initDecoder();
+  //initDecoder();
+  initWebRTCTrack();
 
   function isIDR(payload) {
     for (let i = 0; i < payload.length - 4; i++) {
@@ -322,6 +337,10 @@
         if (msg.cmd==='pong') { 
           latency = Math.round(performance.now()-pingStartTime); 
         }
+        // 可以根据 msg.error 做处理
+        if (msg.error) {
+          console.error('服务端错误:', msg.error);
+        }
       } catch(e){ console.warn('JSON 解析失败:', e); }
       return;
     }
@@ -399,31 +418,283 @@
     const decodeTime = parseFloat(lastDecodeCost) || 0;
     const currentLatency = latency !== '--' ? latency : 0;
 
-    let status = 'ok';
-    if (dropRate > 10 || currentLatency > 150 || decodeTime > 40 || totalQueueBytes > 512*1024) {
-      status = 'warn';
-    }
-
     if (socket && socket.readyState === WebSocket.OPEN) {
       safeSend(JSON.stringify({
         cmd: 'performance',
-        dropRate: dropRate.toFixed(2),
-        latency: currentLatency,
-        decodeTime: decodeTime.toFixed(0),
-        queueBytes: totalQueueBytes,
-        status: status
+        latencyPlusDecode: currentLatency + decodeTime, // 延时+解码
+        dropRate: dropRate.toFixed(0),
+        queueBytes: totalQueueBytes
       }));
     }
 
     document.getElementById('latencyDisplay').textContent =
-      `延时: ${currentLatency} ms | 解码: ${decodeTime.toFixed(0)} ms | 掉帧率: ${dropRate.toFixed(1)}% | 队列: ${(totalQueueBytes/1024).toFixed(0)} KB`;
+      `延时+解码: ${currentLatency + decodeTime} ms | 掉帧率: ${dropRate.toFixed(1)}% | 队列: ${(totalQueueBytes/1024).toFixed(0)} KB`;
 
     expectedFrames = decodedFrames = droppedFrames = 0;
   }
-  setInterval(monitorPerformance, 200);
+  setInterval(monitorPerformance, 500);
 
   // =================== 页面初始化 ===================
-  createSocket();
+  //createSocket();
+  // =================== 压力测试: 每10秒整页刷新 ===================
+  /*setInterval(() => {
+    console.warn('⚠️ 压测：10s 强制刷新页面');
+    location.reload(); // 直接刷新整个页面
+  }, 10000);*/
+
+  // ---------------------- WebRTC Track 模式 ----------------------
+    // ---------------------- WebRTC Track 模式 ----------------------
+  async function initWebRTCTrack() {
+    console.log('✅ 使用 WebRTC Track 模式');
+
+    // ---- 清理旧连接 ----
+    try { if (socket) { socket.close(); socket = null; } } catch(e){}
+    try { if (pc) { pc.close(); pc = null; } } catch(e){}
+
+    frameQueue = [];
+    canvas.style.display = 'none';
+
+    // ---- 创建 video 元素 ----
+    let videoEl = document.getElementById('remoteVideo');
+    if (!videoEl) {
+      videoEl = document.createElement('video');
+      videoEl.id = 'remoteVideo';
+      videoEl.autoplay = true;
+      videoEl.playsInline = true;
+      videoEl.muted = true; // 必须静音才能自动播放
+      videoEl.style.position = 'absolute';
+      videoEl.style.top = '0';
+      videoEl.style.left = '0';
+      videoEl.style.right = '0';
+      videoEl.style.bottom = '0';
+      videoEl.style.margin = 'auto';
+      videoEl.style.maxWidth = '100%';
+      videoEl.style.maxHeight = '100%';
+      document.body.appendChild(videoEl);
+    }
+    videoEl.style.display = 'block';
+
+    // ---- 创建 PeerConnection ----
+    pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+
+    // ---- Track 回调 ----
+    pc.ontrack = (event) => {
+      console.log("🎬 收到远端 track:", event.streams[0]);
+      videoEl.srcObject = event.streams[0];
+      videoEl.play().catch(err => console.warn("video play err", err));
+      // 👇 添加交互绑定
+      bindInteraction(videoEl);
+    };
+
+    // ---- ICE 回调 ----
+    pendingICE = [];
+    pc.onicecandidate = e => {
+      if (e.candidate && socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ cmd: 'webrtc_ice', candidate: e.candidate }));
+      } else if (e.candidate) {
+        pendingICE.push(e.candidate);
+      }
+    };
+
+    // ---- 创建 WS 信令连接 ----
+    socket = new WebSocket('wss://cn2.androidcloudtest.com/?token=81a89b2d4a1715703325eb2a09e53f8a');
+    socket.onopen = async () => {
+      console.log('✅ WebRTC 信令 WS 已连接');
+
+      if (!connect) {
+        connect = true;
+        os = "ios";
+        safeSend(JSON.stringify({ wm_size: `720x1280` }));
+        safeSend(JSON.stringify({ dpi: `320` }));
+        safeSend(JSON.stringify({ os: `ios` }));
+        safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
+        safeSend(JSON.stringify({ codec: `vp8` }));
+        safeSend(JSON.stringify({ cp: `shawnn` }));
+        safeSend(JSON.stringify({ connect: `1` }));
+        safeSend(JSON.stringify({ command: `wm size` }));
+      }
+
+      try {
+        // 添加接收端 Transceiver（确保 SDP 中有 m=video）
+        pc.addTransceiver('video', { direction: 'recvonly' });
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        socket.send(JSON.stringify({
+          cmd: 'webrtc_offer',
+          offer: pc.localDescription
+        }));
+        console.log('📤 已发送 WebRTC Offer');
+      } catch (err) {
+        console.error('❌ 创建 Offer 失败:', err);
+      }
+    };
+
+    // ---- 处理信令消息 ----
+    socket.onmessage = async e => {
+      const data = e.data;
+      //console.log("收到消息类型:", typeof e.data, e.data);
+
+      if (typeof data === 'string') {
+        // JSON 信令
+        let msg;
+        try { msg = JSON.parse(data); } catch { return; }
+
+        if (msg.cmd === 'webrtc_answer') {
+          await pc.setRemoteDescription(msg.answer);
+          // 添加 pending ICE
+          for (const c of pendingICE) await pc.addIceCandidate(c);
+          pendingICE = [];
+          return;
+        }
+        if (msg.cmd === 'webrtc_ice') {
+          if (pc.remoteDescription) await pc.addIceCandidate(msg.candidate);
+          else pendingICE.push(msg.candidate);
+          return;
+        }
+
+        if (msg.cmd === 'pong') { latency = performance.now() - pingStartTime; return; }
+        if (msg.error) { console.error('服务端错误', msg.error); return; }
+
+        return;
+      }
+
+      // 二进制数据处理
+      if (e.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const buffer = new Uint8Array(reader.result);
+          handleBinary(buffer);
+        };
+        reader.readAsArrayBuffer(e.data);
+      } else if (e.data instanceof ArrayBuffer) {
+        const buffer = new Uint8Array(e.data);
+        handleBinary(buffer);
+      } else {
+        console.warn("未知二进制类型:", e.data);
+      }
+
+      // 二进制数据（普通 WS 发的）
+      /*const buffer = new Uint8Array(data);
+      const type = buffer[0];
+      const payload = buffer.slice(1);
+
+      switch(type){
+        case 0x01: frameQueue.push(payload); decodeNextFrame(); break;
+        case 0x02: playPCM(payload); break;
+        case 0x03: console.log("键盘指令 show =", payload[0]); break;
+        case 0x04: 
+          if(payload.length>=8){
+            const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+            photoRegion = { left:view.getInt16(0), top:view.getInt16(2), right:view.getInt16(4), bottom:view.getInt16(6) };
+            showPhoto = true;
+          } else photoRegion = null;
+          break;
+        case 0x05: console.log("ready", payload[0]); break;
+        default: console.warn("未知二进制类型:", type);
+      }*/
+    };
+
+    socket.onclose = () => {
+      console.warn('⚠️ WebRTC 信令 WS 断开，2 秒后重连');
+      setTimeout(initWebRTCTrack, 2000);
+    };
+
+    socket.onerror = e => console.warn('WebRTC WS 错误:', e);
+  }
+
+  function handleBinary(buffer) {
+    if (!buffer || buffer.length === 0) return;
+
+    const type = buffer[0];
+    const payload = buffer.slice(1);
+
+    switch(type){
+      case 0x01: frameQueue.push(payload); decodeNextFrame(); break;
+      case 0x02: playPCM(payload); break;
+      case 0x03: console.log("键盘指令 show =", payload[0]); break;
+      case 0x04: 
+        console.log("0x04");
+        if(payload.length>=8){
+          const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+          photoRegion = { left:view.getInt16(0), top:view.getInt16(2), right:view.getInt16(4), bottom:view.getInt16(6) };
+          showPhoto = true;
+        } else photoRegion = null;
+        break;
+      case 0x05: console.log("ready", payload[0]); break;
+      default: //console.warn("未知二进制类型:", type); 
+        break;
+    }
+  }
+
+  function bindInteraction(el) {
+    let isDown = false;
+    el.addEventListener('mousedown', e => {
+      isDown = true;
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (720 / rect.width);
+      const y = (e.clientY - rect.top) * (1280 / rect.height);
+      //safeSend(JSON.stringify({ start: `${x},${y}` }));
+      sendDown(x, y);
+    });
+
+    el.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (720 / rect.width);
+      const y = (e.clientY - rect.top) * (1280 / rect.height);
+      //safeSend(JSON.stringify({ swipe: `${x},${y}` }));
+      sendMove(x, y);
+    });
+
+    el.addEventListener('mouseup', e => {
+      if (!isDown) return;
+      isDown = false;
+      const rect = el.getBoundingClientRect();
+      const x = (e.clientX - rect.left) * (720 / rect.width);
+      const y = (e.clientY - rect.top) * (1280 / rect.height);
+      //safeSend(JSON.stringify({ end: `${x},${y}` }));
+      sendUp(x, y);
+    });
+
+    el.addEventListener('touchstart', e => {
+      e.preventDefault();
+      isDown = true;
+      const rect = el.getBoundingClientRect();
+      const t = e.touches[0];
+      const x = (t.clientX - rect.left) * (720 / rect.width);
+      const y = (t.clientY - rect.top) * (1280 / rect.height);
+      //safeSend(JSON.stringify({ start: `${x},${y}` }));
+      sendDown(x, y)
+    }, { passive: false });
+
+    el.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (!isDown) return;
+      const rect = el.getBoundingClientRect();
+      const t = e.touches[0];
+      const x = (t.clientX - rect.left) * (720 / rect.width);
+      const y = (t.clientY - rect.top) * (1280 / rect.height);
+      //safeSend(JSON.stringify({ swipe: `${x},${y}` }));
+      sendMove(x, y);
+    }, { passive: false });
+
+    el.addEventListener('touchend', e => {
+      e.preventDefault();
+      if (!isDown) return;
+      isDown = false;
+      const rect = el.getBoundingClientRect();
+      const t = e.changedTouches[0];
+      const x = (t.clientX - rect.left) * (720 / rect.width);
+      const y = (t.clientY - rect.top) * (1280 / rect.height);
+      //safeSend(JSON.stringify({ end: `${x},${y}` }));
+      sendUp(x, y);
+    }, { passive: false });
+  }
+
   </script>
 </body>
 </html>
