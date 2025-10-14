@@ -476,7 +476,14 @@
 
     // ---- 创建 PeerConnection ----
     pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },  // 可选，做 fallback
+        {
+          urls: 'turn:47.113.122.0:3478',
+          username: 'webrtc',
+          credential: '123456'
+        }
+      ]
     });
 
     // ---- Track 回调 ----
