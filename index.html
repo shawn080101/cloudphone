@@ -476,6 +476,7 @@
 
     // ---- 创建 PeerConnection ----
     pc = new RTCPeerConnection({
+      iceTransportPolicy: 'relay', // 强制走 TURN
       iceServers: [
         {
           urls: 'turn:47.113.216.85:3478',
