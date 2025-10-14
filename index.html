@@ -475,18 +475,14 @@
     videoEl.style.display = 'block';
 
     // ---- 创建 PeerConnection ----
-    /*pc = new RTCPeerConnection({
+    pc = new RTCPeerConnection({
       iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },  // 可选，做 fallback
         {
-          urls: 'turn:47.113.122.0:3478',
-          username: 'webrtc',
+          urls: 'turn:47.113.216.85:3478',
+          username: 'hhh',
           credential: '123456'
         }
       ]
-    });*/
-    const pc = new RTCPeerConnection({
-        iceServers: [], // 空列表，不请求 STUN
     });
 
     // ---- Track 回调 ----
