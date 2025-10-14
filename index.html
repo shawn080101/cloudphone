@@ -475,7 +475,7 @@
     videoEl.style.display = 'block';
 
     // ---- 创建 PeerConnection ----
-    pc = new RTCPeerConnection({
+    /*pc = new RTCPeerConnection({
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },  // 可选，做 fallback
         {
@@ -484,6 +484,9 @@
           credential: '123456'
         }
       ]
+    });*/
+    const pc = new RTCPeerConnection({
+        iceServers: [], // 空列表，不请求 STUN
     });
 
     // ---- Track 回调 ----
@@ -506,7 +509,7 @@
     };
 
     // ---- 创建 WS 信令连接 ----
-    socket = new WebSocket('wss://cn2.androidcloudtest.com/?token=45414feaa5433caa73975da4fc826ce1');
+    socket = new WebSocket('wss://cn2.androidcloudtest.com/?token=ac2a05a918af064ec805c84f5801d649');
     socket.onopen = async () => {
       console.log('✅ WebRTC 信令 WS 已连接');
 
