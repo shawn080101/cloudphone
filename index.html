@@ -58,12 +58,13 @@
   // =================== WebSocket 自动重连与发送 ===================
   let socket = null, reconnectTimer = null, connect = false, os = "";
   let latency = '--', pingStartTime = 0, pingInterval = null;
+  const token = "c719e24795f17b87f3499e213e6d307d";
 
   // === 新增: 掉帧统计变量 ===
   let expectedFrames = 0, decodedFrames = 0, droppedFrames = 0;
 
   function createSocket() {
-    socket = new WebSocket('wss://cn2.androidcloudtest.com/?token=81a89b2d4a1715703325eb2a09e53f8a'); //wss://cn2.androidcloudtest.com ws://192.168.190.4:3000 wss://cloudphonews.com 
+    socket = new WebSocket(`wss://cn2.androidcloudtest.com/?token=${token}`); //wss://cn2.androidcloudtest.com ws://192.168.190.4:3000 wss://cloudphonews.com 
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
@@ -166,8 +167,8 @@
     isStart = false;
     createSocket();
   }
-  //initDecoder();
-  initWebRTCTrack();
+  initDecoder();
+  //initWebRTCTrack();
 
   function isIDR(payload) {
     for (let i = 0; i < payload.length - 4; i++) {
@@ -442,6 +443,8 @@
     location.reload(); // 直接刷新整个页面
   }, 10000);*/
 
+
+
   // ---------------------- WebRTC Track 模式 ----------------------
     // ---------------------- WebRTC Track 模式 ----------------------
   async function initWebRTCTrack() {
@@ -479,9 +482,9 @@
       iceTransportPolicy: 'relay',
       iceServers: [
         {
-          urls: 'turn:47.121.185.180:3478',
-          username: 'webrtc_test',
-          credential: '123456',
+          urls: 'turn:cnt.androidcloudtest.com:3478',
+          username: token.slice(0, 8),
+          credential: token.slice(8),
         }
       ]
     });
@@ -506,7 +509,7 @@
     };
 
     // ---- 创建 WS 信令连接 ----
-    socket = new WebSocket('wss://cn2.androidcloudtest.com/?token=9f76b11ead2ffb32a7300ad0e16f595f');
+    socket = new WebSocket(`wss://cn2.androidcloudtest.com/?token=${token}`);
     socket.onopen = async () => {
       console.log('✅ WebRTC 信令 WS 已连接');
 
