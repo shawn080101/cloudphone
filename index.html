@@ -58,13 +58,15 @@
   // =================== WebSocket 自动重连与发送 ===================
   let socket = null, reconnectTimer = null, connect = false, os = "";
   let latency = '--', pingStartTime = 0, pingInterval = null;
-  const token = "d745e14ae8683037a4fa1e1b26df6fc9";
+  const token = "15d8c67bc5f9ec5b56411d60df07b9aa";
+  const urls = "wss://cn2.androidcloudtest.com";
+  const turnUrls = "turn:cnt.androidcloudtest.com:3478"; //turn:cnt.cloudphonews.com:3479 turn:cnt.androidcloudtest.com:3478
 
   // === 新增: 掉帧统计变量 ===
   let expectedFrames = 0, decodedFrames = 0, droppedFrames = 0;
 
   function createSocket() {
-    socket = new WebSocket(`wss://cn2.androidcloudtest.com/?token=${token}`); //wss://cn2.androidcloudtest.com ws://192.168.190.4:3000 wss://cloudphonews.com 
+    socket = new WebSocket(`${urls}/?token=${token}`); //wss://cn2.androidcloudtest.com ws://192.168.190.4:3000 wss://cloudphonews.com 
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
@@ -78,8 +80,12 @@
         safeSend(JSON.stringify({ wm_size: `720x1280` }));
         safeSend(JSON.stringify({ dpi: `320` }));
         safeSend(JSON.stringify({ os: `ios` }));
+        //safeSend(JSON.stringify({ scheme: `tap6xh://com.bob.games?data=bobCloud` }));
+        //safeSend(JSON.stringify({ scheme: `null` }));
+        //safeSend(JSON.stringify({ scheme: `aa` }));
         safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
         safeSend(JSON.stringify({ codec: `h264` }));
+        //safeSend(JSON.stringify({ webrtc: `false` }));
         safeSend(JSON.stringify({ cp: `shawnn` }));
         safeSend(JSON.stringify({ connect: `1` }));
         safeSend(JSON.stringify({ command: `wm size` }));
@@ -509,7 +515,7 @@
     };
 
     // ---- 创建 WS 信令连接 ----
-    socket = new WebSocket(`wss://cn2.androidcloudtest.com/?token=${token}`);
+    socket = new WebSocket(`${urls}/?token=${token}`);
     socket.onopen = async () => {
       console.log('✅ WebRTC 信令 WS 已连接');
 
@@ -521,6 +527,8 @@
         safeSend(JSON.stringify({ os: `ios` }));
         safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
         safeSend(JSON.stringify({ codec: `vp8` }));
+        safeSend(JSON.stringify({ bit_rate: `50000` }));
+        //safeSend(JSON.stringify({ webrtc: `true` }));
         safeSend(JSON.stringify({ cp: `shawnn` }));
         safeSend(JSON.stringify({ connect: `1` }));
         safeSend(JSON.stringify({ command: `wm size` }));
@@ -623,7 +631,6 @@
     const payload = buffer.slice(1);
 
     switch(type){
-      case 0x01: frameQueue.push(payload); decodeNextFrame(); break;
       case 0x02: playPCM(payload); break;
       case 0x03: console.log("键盘指令 show =", payload[0]); break;
       case 0x04: 
