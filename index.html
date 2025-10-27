@@ -173,8 +173,8 @@
     isStart = false;
     createSocket();
   }
-  initDecoder();
-  //initWebRTCTrack();
+  //initDecoder();
+  initWebRTCTrack();
 
   function isIDR(payload) {
     for (let i = 0; i < payload.length - 4; i++) {
