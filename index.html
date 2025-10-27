@@ -449,12 +449,25 @@
     location.reload(); // 直接刷新整个页面
   }, 10000);*/
 
+  function getIOSVersion() {
+    const ua = navigator.userAgent;
+    const match = ua.match(/OS (\d+)[._](\d+)?[._]?(\d+)?/);
+    if (match) {
+      return match.slice(1).filter(Boolean).join('.');
+    }
+    return null;
+  }
 
 
   // ---------------------- WebRTC Track 模式 ----------------------
     // ---------------------- WebRTC Track 模式 ----------------------
   async function initWebRTCTrack() {
     console.log('✅ 使用 WebRTC Track 模式');
+    console.log(getIOSVersion());
+    const version = parseFloat(getIOSVersion());
+    if (version < 17) {
+      console.log("iOS 17- detected");
+    }
 
     // ---- 清理旧连接 ----
     try { if (socket) { socket.close(); socket = null; } } catch(e){}
