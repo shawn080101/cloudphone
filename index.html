@@ -58,7 +58,7 @@
   // =================== WebSocket 自动重连与发送 ===================
   let socket = null, reconnectTimer = null, connect = false, os = "";
   let latency = '--', pingStartTime = 0, pingInterval = null;
-  const token = "5367c89e5bff088b6c6f8460a5d10c6e";
+  const token = "6f2adc6884b95acddfd1a5aa5916a6b0";
   const urls = "wss://cn2.androidcloudtest.com";
   const turnUrls = "turn:cnt.androidcloudtest.com:3478"; //turn:cnt.cloudphonews.com:3479 turn:cnt.androidcloudtest.com:3478
 
@@ -195,6 +195,7 @@
     const ptsUs = Number(ptsView.getBigUint64(0));
     const nalu = payloadWithPTS.slice(8);
     const isKey = isIDR(nalu);
+    console.log('isKey:', isKey)  
 
     if (!isKey && !isStart) return;
 
@@ -449,25 +450,12 @@
     location.reload(); // 直接刷新整个页面
   }, 10000);*/
 
-  function getIOSVersion() {
-    const ua = navigator.userAgent;
-    const match = ua.match(/OS (\d+)[._](\d+)?[._]?(\d+)?/);
-    if (match) {
-      return match.slice(1).filter(Boolean).join('.');
-    }
-    return null;
-  }
 
 
   // ---------------------- WebRTC Track 模式 ----------------------
     // ---------------------- WebRTC Track 模式 ----------------------
   async function initWebRTCTrack() {
     console.log('✅ 使用 WebRTC Track 模式');
-    console.log(getIOSVersion());
-    const version = parseFloat(getIOSVersion());
-    if (version < 17) {
-      console.log("iOS 17- detected");
-    }
 
     // ---- 清理旧连接 ----
     try { if (socket) { socket.close(); socket = null; } } catch(e){}
@@ -515,6 +503,20 @@
       videoEl.play().catch(err => console.warn("video play err", err));
       // 👇 添加交互绑定
       bindInteraction(videoEl);
+      if (!connect) {
+        connect = true;
+        os = "ios";
+        safeSend(JSON.stringify({ wm_size: `720x1280` }));
+        safeSend(JSON.stringify({ dpi: `320` }));
+        safeSend(JSON.stringify({ os: `ios` }));
+        safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
+        safeSend(JSON.stringify({ codec: `vp8` }));
+        safeSend(JSON.stringify({ bit_rate: `50000` }));
+        //safeSend(JSON.stringify({ webrtc: `true` }));
+        safeSend(JSON.stringify({ cp: `shawnn` }));
+        safeSend(JSON.stringify({ connect: `1` }));
+        safeSend(JSON.stringify({ command: `wm size` }));
+      }
     };
 
     // ---- ICE 回调 ----
@@ -532,20 +534,7 @@
     socket.onopen = async () => {
       console.log('✅ WebRTC 信令 WS 已连接');
 
-      if (!connect) {
-        connect = true;
-        os = "ios";
-        safeSend(JSON.stringify({ wm_size: `720x1280` }));
-        safeSend(JSON.stringify({ dpi: `320` }));
-        safeSend(JSON.stringify({ os: `ios` }));
-        safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
-        safeSend(JSON.stringify({ codec: `vp8` }));
-        safeSend(JSON.stringify({ bit_rate: `50000` }));
-        //safeSend(JSON.stringify({ webrtc: `true` }));
-        safeSend(JSON.stringify({ cp: `shawnn` }));
-        safeSend(JSON.stringify({ connect: `1` }));
-        safeSend(JSON.stringify({ command: `wm size` }));
-      }
+
 
       try {
         // 添加接收端 Transceiver（确保 SDP 中有 m=video）
