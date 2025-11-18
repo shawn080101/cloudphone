@@ -58,7 +58,7 @@
   // =================== WebSocket 自动重连与发送 ===================
   let socket = null, reconnectTimer = null, connect = false, os = "";
   let latency = '--', pingStartTime = 0, pingInterval = null;
-  const token = "6f2adc6884b95acddfd1a5aa5916a6b0";
+  const token = "770e53e8558903e7efe07501a4c70295";
   const urls = "wss://cn2.androidcloudtest.com";
   const turnUrls = "turn:cnt.androidcloudtest.com:3478"; //turn:cnt.cloudphonews.com:3479 turn:cnt.androidcloudtest.com:3478
 
@@ -486,7 +486,6 @@
 
     // ---- 创建 PeerConnection ----
     pc = new RTCPeerConnection({
-      iceTransportPolicy: 'relay',
       iceServers: [
         {
           urls: 'turn:cnt.androidcloudtest.com:3478',
@@ -503,6 +502,38 @@
       videoEl.play().catch(err => console.warn("video play err", err));
       // 👇 添加交互绑定
       bindInteraction(videoEl);
+      /*if (!connect) {
+        connect = true;
+        os = "ios";
+        safeSend(JSON.stringify({ wm_size: `720x1280` }));
+        safeSend(JSON.stringify({ dpi: `320` }));
+        safeSend(JSON.stringify({ os: `ios` }));
+        safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
+        safeSend(JSON.stringify({ codec: `vp8` }));
+        safeSend(JSON.stringify({ bit_rate: `50000` }));
+        //safeSend(JSON.stringify({ webrtc: `true` }));
+        safeSend(JSON.stringify({ cp: `shawnn` }));
+        safeSend(JSON.stringify({ connect: `1` }));
+        safeSend(JSON.stringify({ command: `wm size` }));
+      }*/
+    };
+
+    // ---- ICE 回调 ----
+    pendingICE = [];
+    pc.onicecandidate = e => {
+      console.log('candidate:', e.candidate);
+      if (e.candidate && socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ cmd: 'webrtc_ice', candidate: e.candidate }));
+      } else if (e.candidate) {
+        pendingICE.push(e.candidate);
+      }
+    };
+
+    // ---- 创建 WS 信令连接 ----
+    socket = new WebSocket(`${urls}/?token=${token}`);
+    socket.onopen = async () => {
+      console.log('✅ WebRTC 信令 WS 已连接');
+
       if (!connect) {
         connect = true;
         os = "ios";
@@ -517,24 +548,6 @@
         safeSend(JSON.stringify({ connect: `1` }));
         safeSend(JSON.stringify({ command: `wm size` }));
       }
-    };
-
-    // ---- ICE 回调 ----
-    pendingICE = [];
-    pc.onicecandidate = e => {
-      if (e.candidate && socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ cmd: 'webrtc_ice', candidate: e.candidate }));
-      } else if (e.candidate) {
-        pendingICE.push(e.candidate);
-      }
-    };
-
-    // ---- 创建 WS 信令连接 ----
-    socket = new WebSocket(`${urls}/?token=${token}`);
-    socket.onopen = async () => {
-      console.log('✅ WebRTC 信令 WS 已连接');
-
-
 
       try {
         // 添加接收端 Transceiver（确保 SDP 中有 m=video）
