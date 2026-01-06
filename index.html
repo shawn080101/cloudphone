@@ -58,7 +58,7 @@
   // =================== WebSocket 自动重连与发送 ===================
   let socket = null, reconnectTimer = null, connect = false, os = "";
   let latency = '--', pingStartTime = 0, pingInterval = null;
-  const token = "770e53e8558903e7efe07501a4c70295";
+  const token = "7c52beef6ce03897996a5f759dc9746f";
   const urls = "wss://cn2.androidcloudtest.com";
   const turnUrls = "turn:cnt.androidcloudtest.com:3478"; //turn:cnt.cloudphonews.com:3479 turn:cnt.androidcloudtest.com:3478
 
@@ -66,7 +66,7 @@
   let expectedFrames = 0, decodedFrames = 0, droppedFrames = 0;
 
   function createSocket() {
-    socket = new WebSocket(`${urls}/?token=${token}`); //wss://cn2.androidcloudtest.com ws://192.168.190.4:3000 wss://cloudphonews.com 
+    socket = new WebSocket(`${urls}/?token=${token}`); //wss://cn2.androidcloudtest.com ws://192.168.3.34:3000 wss://cloudphonews.com 
     socket.binaryType = 'arraybuffer';
 
     socket.onopen = () => {
@@ -77,7 +77,7 @@
       if (!connect) {
         connect = true;
         os = "ios";
-        safeSend(JSON.stringify({ wm_size: `720x1280` }));
+        safeSend(JSON.stringify({ wm_size: `1290x2796` }));
         safeSend(JSON.stringify({ dpi: `320` }));
         safeSend(JSON.stringify({ os: `ios` }));
         //safeSend(JSON.stringify({ scheme: `tap6xh://com.bob.games?data=bobCloud` }));
@@ -122,8 +122,8 @@
   // =================== Canvas & WebCodecs 视频解码 ===================
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = 720;
-  canvas.height = 1280;
+  canvas.width = 1290;
+  canvas.height = 2796;
 
   let decodedFrameCount = 0;
   let videoDecoder = null, frameQueue = [], MAX_FRAME_QUEUE = 10, decoding = false;
@@ -134,7 +134,7 @@
   let lastDecodeCost = '--';
 
   function initDecoder() {
-    if (typeof VideoDecoder === 'undefined' || !('isConfigSupported' in VideoDecoder)) {
+    /*if (typeof VideoDecoder === 'undefined' || !('isConfigSupported' in VideoDecoder)) {
       console.error('❌ 当前浏览器不支持 WebCodecs VideoDecoder');
       const ctx = canvas.getContext('2d');
       ctx.fillStyle = '#fff';
@@ -143,7 +143,7 @@
       ctx.fillText('WebCodecs 不受支持', canvas.width / 2, canvas.height / 2);
       initWebRTCTrack();
       return;
-    }
+    }*/
 
     videoDecoder = new VideoDecoder({
       output: frame => {
@@ -164,8 +164,8 @@
 
     videoDecoder.configure({
       codec: 'avc1.42E01E',
-      codedWidth: 720,
-      codedHeight: 1280,
+      codedWidth: 1290,
+      codedHeight: 2796,
       optimizeForLatency: true,
       hardwareAcceleration: "prefer-hardware",
     });
@@ -173,8 +173,8 @@
     isStart = false;
     createSocket();
   }
-  //initDecoder();
-  initWebRTCTrack();
+  initDecoder();
+  //initWebRTCTrack();
 
   function isIDR(payload) {
     for (let i = 0; i < payload.length - 4; i++) {
@@ -195,7 +195,6 @@
     const ptsUs = Number(ptsView.getBigUint64(0));
     const nalu = payloadWithPTS.slice(8);
     const isKey = isIDR(nalu);
-    console.log('isKey:', isKey)  
 
     if (!isKey && !isStart) return;
 
@@ -282,7 +281,7 @@
 
   // =================== Canvas 缩放适配 ===================
   function resizeCanvas() {
-    const aspectRatio = 720 / 1280;
+    const aspectRatio = 1290 / 2796;
     let displayWidth = window.innerWidth;
     let displayHeight = displayWidth / aspectRatio;
 
@@ -486,9 +485,10 @@
 
     // ---- 创建 PeerConnection ----
     pc = new RTCPeerConnection({
+      iceTransportPolicy: 'relay',
       iceServers: [
         {
-          urls: 'turn:cnt.androidcloudtest.com:3478',
+          urls: turnUrls,
           username: token.slice(0, 8),
           credential: token.slice(8),
         }
@@ -502,26 +502,11 @@
       videoEl.play().catch(err => console.warn("video play err", err));
       // 👇 添加交互绑定
       bindInteraction(videoEl);
-      /*if (!connect) {
-        connect = true;
-        os = "ios";
-        safeSend(JSON.stringify({ wm_size: `720x1280` }));
-        safeSend(JSON.stringify({ dpi: `320` }));
-        safeSend(JSON.stringify({ os: `ios` }));
-        safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
-        safeSend(JSON.stringify({ codec: `vp8` }));
-        //safeSend(JSON.stringify({ bit_rate: `50000` }));
-        //safeSend(JSON.stringify({ webrtc: `true` }));
-        safeSend(JSON.stringify({ cp: `shawnn` }));
-        safeSend(JSON.stringify({ connect: `1` }));
-        safeSend(JSON.stringify({ command: `wm size` }));
-      }*/
     };
 
     // ---- ICE 回调 ----
     pendingICE = [];
     pc.onicecandidate = e => {
-      console.log('candidate:', e.candidate);
       if (e.candidate && socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ cmd: 'webrtc_ice', candidate: e.candidate }));
       } else if (e.candidate) {
@@ -537,7 +522,7 @@
       if (!connect) {
         connect = true;
         os = "ios";
-        safeSend(JSON.stringify({ wm_size: `720x1280` }));
+        safeSend(JSON.stringify({ wm_size: `1290x2796` }));
         safeSend(JSON.stringify({ dpi: `320` }));
         safeSend(JSON.stringify({ os: `ios` }));
         safeSend(JSON.stringify({ scheme: `tml0cj://com.bob.games?data=bobCloud&name=shawn22222&password=KnlGxV48eTyjZmg%2FmTfE9Q%3D%3D&token=` }));
@@ -667,8 +652,8 @@
     el.addEventListener('mousedown', e => {
       isDown = true;
       const rect = el.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (720 / rect.width);
-      const y = (e.clientY - rect.top) * (1280 / rect.height);
+      const x = (e.clientX - rect.left) * (1290 / rect.width);
+      const y = (e.clientY - rect.top) * (2796 / rect.height);
       //safeSend(JSON.stringify({ start: `${x},${y}` }));
       sendDown(x, y);
     });
@@ -676,8 +661,8 @@
     el.addEventListener('mousemove', e => {
       if (!isDown) return;
       const rect = el.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (720 / rect.width);
-      const y = (e.clientY - rect.top) * (1280 / rect.height);
+      const x = (e.clientX - rect.left) * (1290 / rect.width);
+      const y = (e.clientY - rect.top) * (2796 / rect.height);
       //safeSend(JSON.stringify({ swipe: `${x},${y}` }));
       sendMove(x, y);
     });
@@ -686,8 +671,8 @@
       if (!isDown) return;
       isDown = false;
       const rect = el.getBoundingClientRect();
-      const x = (e.clientX - rect.left) * (720 / rect.width);
-      const y = (e.clientY - rect.top) * (1280 / rect.height);
+      const x = (e.clientX - rect.left) * (1290 / rect.width);
+      const y = (e.clientY - rect.top) * (2796 / rect.height);
       //safeSend(JSON.stringify({ end: `${x},${y}` }));
       sendUp(x, y);
     });
@@ -697,8 +682,8 @@
       isDown = true;
       const rect = el.getBoundingClientRect();
       const t = e.touches[0];
-      const x = (t.clientX - rect.left) * (720 / rect.width);
-      const y = (t.clientY - rect.top) * (1280 / rect.height);
+      const x = (t.clientX - rect.left) * (1290 / rect.width);
+      const y = (t.clientY - rect.top) * (2796 / rect.height);
       //safeSend(JSON.stringify({ start: `${x},${y}` }));
       sendDown(x, y)
     }, { passive: false });
@@ -708,8 +693,8 @@
       if (!isDown) return;
       const rect = el.getBoundingClientRect();
       const t = e.touches[0];
-      const x = (t.clientX - rect.left) * (720 / rect.width);
-      const y = (t.clientY - rect.top) * (1280 / rect.height);
+      const x = (t.clientX - rect.left) * (1290 / rect.width);
+      const y = (t.clientY - rect.top) * (2796 / rect.height);
       //safeSend(JSON.stringify({ swipe: `${x},${y}` }));
       sendMove(x, y);
     }, { passive: false });
@@ -720,8 +705,8 @@
       isDown = false;
       const rect = el.getBoundingClientRect();
       const t = e.changedTouches[0];
-      const x = (t.clientX - rect.left) * (720 / rect.width);
-      const y = (t.clientY - rect.top) * (1280 / rect.height);
+      const x = (t.clientX - rect.left) * (1290 / rect.width);
+      const y = (t.clientY - rect.top) * (2796 / rect.height);
       //safeSend(JSON.stringify({ end: `${x},${y}` }));
       sendUp(x, y);
     }, { passive: false });
@@ -729,5 +714,4 @@
 
   </script>
 </body>
-
 </html>
